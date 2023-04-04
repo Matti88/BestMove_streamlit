@@ -1,3 +1,6 @@
+## Commands for making it work on MacOS
+
+```bash
 brew install pyenv
 pyenv install 3.9
 eval "$(command pyenv init -)"
@@ -7,3 +10,9 @@ python3 --version
 
 #/path/to/your/python -m streamlit run
 /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/streamlit/elements/arrow.py - to change with collections.abc
+```
+
+## Command for Unit Test
+```bash
+> python3 -m unittest ./bestMove/test_bestMove.py
+```

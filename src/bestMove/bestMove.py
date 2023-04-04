@@ -16,7 +16,11 @@ def cleanUp_outlier(df_houses):
 def string_to_digit(df, cols_to_transform = ['lon','lat','sqm']):
     #  transform for these columns ['lon','lat','price','sqm']        
     # clean up the price column
-    df['price'] = df['price'].str.replace(r'\D', '', regex=True).astype(int)
+    df.loc[:, 'price'] = df['price'].apply(lambda x: int(''.join(filter(str.isdigit, str(x)))))
+
+    # to try later -  suggested from chatGPT
+    # df.loc[:, 'price'] = df['price'].str.extract('(\d+)').astype(int)
+
 
     for col in cols_to_transform:
         mask = pd.to_numeric(df [col], errors='coerce').isna()
