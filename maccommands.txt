@@ -1,0 +1,9 @@
+brew install pyenv
+pyenv install 3.9
+eval "$(command pyenv init -)"
+eval "$(command pyenv init --path)"
+pyenv global 3.9 
+python3 --version
+
+#/path/to/your/python -m streamlit run
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/streamlit/elements/arrow.py - to change with collections.abc

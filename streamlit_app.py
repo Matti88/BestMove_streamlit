@@ -10,7 +10,6 @@ from typing import List, Tuple
 import json
 from streamlit_searchbox import st_searchbox
 from folium.plugins import MarkerCluster
-
 import bestMove.bestMove as bm
 
 
@@ -154,8 +153,9 @@ def del_single_isochrone(index_iso):
     st.session_state.poi_details_list.pop(index_iso)
     print("================\nfrom DELETE Button")
     
-    if len(st.session_state.poi_details_list) == 0:    
-        newmapUpdate("ISOCHRONES_MARKERS")
+    if len(st.session_state.poi_details_list) == 0:  
+        if 'housing_data' in st.session_state:
+            newmapUpdate("ISOCHRONES_MARKERS")
     else:
         newmapUpdate("ISOCHRONES")
 
@@ -172,7 +172,9 @@ def poi_selection_switch(poi_index):
     if len(st.session_state.poi_details_list) == 0:    
         newmapUpdate("ISOCHRONES_MARKERS")
     else:
-        newmapUpdate("MARKERS")
+        if 'housing_data' in st.session_state:
+            newmapUpdate("MARKERS")
+
 
 
 def prefiltering_checks():
@@ -306,7 +308,7 @@ with tab1:
 
     st.markdown("# BestMove")
     
-    left_main, center , right_main  = st.columns([5,1,2])
+    left_main , right_main  = st.columns([5,2])
 
     # loading MAp
     if 'map' in st.session_state :
