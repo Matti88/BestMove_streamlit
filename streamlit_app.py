@@ -152,10 +152,8 @@ def load_map():
 def del_single_isochrone(index_iso):
     st.session_state.poi_details_list.pop(index_iso)
     print("================\nfrom DELETE Button")
-    
-    if len(st.session_state.poi_details_list) == 0:  
-        if 'housing_data' in st.session_state:
-            newmapUpdate("ISOCHRONES_MARKERS")
+    if 'housing_data' in st.session_state:    
+        newmapUpdate("ISOCHRONES_MARKERS")
     else:
         newmapUpdate("ISOCHRONES")
 
