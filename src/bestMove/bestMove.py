@@ -3,15 +3,6 @@ import numpy as np
 import scipy.stats as stats 
 import random
 
-# cleanupd outlier
-def cleanUp_outlier(df_houses):
-  
-    df_houses_not_good = df_houses[df_houses.isna().any(axis=1)] # collecting housing options that have missing data
-    df_houses_not_good = pd.concat( [ df_houses_not_good, df_houses[df_houses['address'].str.len() <= len("Wien,") ] ])
-    df_houses_not_good =  pd.concat( [ df_houses_not_good, df_houses[(np.abs(stats.zscore(df_houses['lat'])) < 1.8)] ]) 
-    df_houses_not_good =  pd.concat( [ df_houses_not_good, df_houses[(np.abs(stats.zscore(df_houses['lon'])) < 1.8)] ]) 
-    return df_houses_not_good
-
 # string to digit transform
 def string_to_digit(df, cols_to_transform = ['lon','lat','sqm']):
     #  transform for these columns ['lon','lat','price','sqm']        
@@ -21,7 +12,6 @@ def string_to_digit(df, cols_to_transform = ['lon','lat','sqm']):
     # to try later -  suggested from chatGPT
     # df.loc[:, 'price'] = df['price'].str.extract('(\d+)').astype(int)
 
-
     for col in cols_to_transform:
         mask = pd.to_numeric(df [col], errors='coerce').isna()
         df  = df .loc[~mask]
@@ -30,11 +20,12 @@ def string_to_digit(df, cols_to_transform = ['lon','lat','sqm']):
 
 # Ray casting
 def ray_casting_method(x,y,poly):
-
     n = len(poly)
     inside = False
-
     p1x,p1y = poly[0]
+    # print("====point test====")
+    # print(x,y)
+    # print(poly)
     for i in range(n+1):
         p2x,p2y = poly[i % n]
         if y > min(p1y,p2y):
@@ -45,7 +36,10 @@ def ray_casting_method(x,y,poly):
                     if p1x == p2x or x <= xints:
                         inside = not inside
         p1x,p1y = p2x,p2y
-
+    # if inside:
+    #     print("found inside")
+    # else:
+    #     print("found OUTside")
     return inside
 
 
@@ -58,12 +52,6 @@ def check_house_in_reachable_area(longitude, latitude, ListOfShapes ):
                 return True
     return False
 
-# given a dataframe and array filter for those values that are True given the list of columns in array_pois
-def filtering_by_PoI(dataframe, array_pois):
-    for poi_ in array_pois:
-        dataframe = dataframe.loc[dataframe[str(hash(str(poi_)))] == True]
-    return dataframe
- 
 # a function to generate the style of the isochrones
 def style_function(feature):
     global base_color
@@ -85,8 +73,9 @@ def highlight_function(feature):
 
 
 def add_poi_colum_selection(df_houses, poi_name ,PoiGeoJSON):
+
     # Add database columns with boolean information on house in/out of the isoline
-    
     df_houses[poi_name] = df_houses.apply(lambda row: check_house_in_reachable_area( row['lon'], row['lat'],PoiGeoJSON['features'][0]['geometry']['coordinates']) , axis=1)
     df_houses = df_houses[ df_houses[poi_name] == True ]
+  
     return df_houses
