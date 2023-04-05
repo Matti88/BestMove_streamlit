@@ -251,7 +251,7 @@ with st.sidebar:
         st.subheader("Price and Space filtering")
         st.session_state.price_max = st.number_input("Max Rental Price", min_value=400, max_value=3000, step=1 , value=800, disabled=False, label_visibility="visible")
         st.session_state.sqm_min = st.number_input("Min m\u00B2 space ", min_value=10, max_value=200 , step=1 , value=40, disabled=False, label_visibility="visible")
-        st.form_submit_button("price_sqm_form", use_container_width=True, on_click=prefiltering_checks)
+        st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
         
     st.markdown(f"<hr />", unsafe_allow_html=True) 
 
@@ -373,17 +373,24 @@ with tab2:
 
     if uploaded_file is not None:
         # Can be used wherever a "file-like" object is accepted:
-        housesPoints = pd.read_csv(uploaded_file, sep=",")
+        housesPoints = pd.read_csv(uploaded_file, sep=";", quotechar='"')
         housesPoints.columns = housesPoints.columns.str.lower()
         boolean_check_list = list(map(lambda x : x in housesPoints.columns, necessaryList))
 
 
         if all(boolean_check_list):
+
+            ## TODO - REMAKE the loading work and decide 
+            ##       - XLSX or CSV, and which type of CSV
+            # Replace commas with dots in the specified columns
+
             housesPoints = pd.DataFrame(housesPoints).dropna(subset=['lon','lat','price','sqm'])
             
             housesPoints = bm.string_to_digit(housesPoints)
+            
             st.session_state.housing_data = housesPoints
             st.success("Successful Data Load")
+            st.experimental_show(housesPoints)
         else:
             missing_headers = [] 
             for i, value in  enumerate(boolean_check_list):
