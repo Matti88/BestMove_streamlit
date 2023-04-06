@@ -11,6 +11,7 @@ import json
 from streamlit_searchbox import st_searchbox
 from folium.plugins import MarkerCluster
 import bestMove.bestMove as bm
+from bestMove.poiObject import PoiDefinition
 
 
 dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Public Transport': 'transit'}
@@ -165,7 +166,7 @@ def reset_map():
 
 # selecting a poi for house filtering
 def poi_selection_switch(poi_index):
-    st.session_state.poi_details_list[poi_index][5] = not(st.session_state.poi_details_list[poi_index][5] )
+    st.session_state.poi_details_list[poi_index].filtered = not(st.session_state.poi_details_list[poi_index].filtered )
     print("================\nfrom SELECTION Switch")
     if len(st.session_state.poi_details_list) == 0:    
         newmapUpdate("ISOCHRONES_MARKERS")
@@ -204,7 +205,7 @@ def newmapUpdate(refreshENUM):
         removing_geoJson(st.session_state.map)
 
         for isoline_ in st.session_state.poi_details_list:
-            isolineInsertion(isoline_[4], st.session_state.map)
+            isolineInsertion(isoline_.isolineObject, st.session_state.map)
 
     # MARKERS Refreshing
     if refresh_dict[refreshENUM][Markers_] and test_id_map_is_in_session_state:
@@ -281,12 +282,16 @@ with st.sidebar:
                 st.error(f"Title is missing! 🚨")
             elif address == "lon and lat":
                 st.error(f"POI Coordinates missing! 🚨")
-            elif title in list(map(lambda x: x[0], st.session_state.poi_details_list)):
+            elif title in list(map(lambda x: x.title, st.session_state.poi_details_list)):
                 st.error(f"There is alread a POI with same title! 🚨")                
             else:
                 # Store the selected options in the session state 
                 isolineObject = isolineGet(address[1], address[0],dict_selection_mode[mode_of_transport], minutes_table*60, st.session_state.geo_API_Key )
-                st.session_state.poi_details_list.append( [title, mode_of_transport , minutes_table, address, isolineObject, False] )
+                poi_instnace = PoiDefinition(title, mode_of_transport , minutes_table, address, isolineObject, False)
+
+
+
+                st.session_state.poi_details_list.append( poi_instnace )
                 newmapUpdate("ISOCHRONES")
 
     #separate the areas
@@ -334,15 +339,15 @@ with tab1:
                 with container_:
                     left , right  = st.columns([4,3])
                     # add an item card
-                    left.markdown(f"**Poi Title**: {item[0]}")
-                    left.markdown(f"**Mode of Transportation**: {item[1]}")
-                    left.markdown(f"**Time Range**: {item[2]} minutes")
+                    left.markdown(f"**Poi Title**: {item.title}")
+                    left.markdown(f"**Mode of Transportation**: {item.mode_of_transport}")
+                    left.markdown(f"**Time Range**: {item.minutes_table} minutes")
 
                     # add a button to delete the item
                     right.button(f'Delete 🗑️ #{i+1}', on_click=del_single_isochrone, args=(i,), use_container_width =True)
 
                     # Filter markers by POI
-                    right.checkbox(f'Keep listings in this area: #{i+1}', value=item[5], on_change=poi_selection_switch, args=(i,))
+                    right.checkbox(f'Keep listings in this area: #{i+1}', value=item.filtered, on_change=poi_selection_switch, args=(i,))
                 
                 st.markdown(f"<hr />", unsafe_allow_html=True)
                 
