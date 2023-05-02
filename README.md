@@ -1,4 +1,4 @@
-<img src="./assets/MyBestMove_logo.png"  width="50%" height="50%">
+<img src="./assets/MyBestMove_logo.png"  width="30%" height="30%">
 
 ## The App
 
@@ -23,4 +23,32 @@ Here is an example of an isochrone generated using myBestMove:
 
 ![Example Isochrone](/assets/Example_Isochrones_with_Origin_Point_of_Interest.png "Example Isochrone")
 
+## Commands for making it work on MacOS + M1
 
+```bash
+brew install pyenv
+pyenv install 3.9
+eval "$(command pyenv init -)"
+eval "$(command pyenv init --path)"
+pyenv global 3.9 
+python3 --version
+```
+
+### modification on streamlit library
+When running on python 3.11 as for April 2023 you will see the following error:
+
+```bash
+streamlit run streamlit_app.py
+> /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/streamlit/elements/arrow.py
+```
+You can make it work with a simple modification on the streamlit library to target the right outdeted object:
+
+- go to the file `/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/streamlit/elements/arrow.py`
+- to change with the import from `collections` to  `collections.abc`
+- run streamlit on Mac
+
+
+## Command for Unit Test
+```bash
+python3 -m unittest ./bestMove/test_bestMove.py
+```

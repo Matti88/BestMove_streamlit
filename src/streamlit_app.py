@@ -213,11 +213,17 @@ def newmapUpdate(refreshENUM):
         #st.session_state.map = removing_mk(st.session_state.map)
         removing_mk(st.session_state.map)
 
-        allTheHouses = st.session_state.housing_data  
+        allTheHouses = st.session_state.housing_data
         allTheHouses = allTheHouses[allTheHouses['price']<=st.session_state.price_max]
-        allTheHouses = allTheHouses[allTheHouses['sqm']>=st.session_state.sqm_min]
 
-        if any(list(map(lambda x: x[5], st.session_state.poi_details_list ))):
+        print("\n----after price filtering-----")
+        print(allTheHouses.shape)
+        
+        allTheHouses = allTheHouses[allTheHouses['sqm']>=st.session_state.sqm_min]
+        print("\n----after sqm filtering-----")
+        print(allTheHouses.shape)
+
+        if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
             for poi_ in st.session_state.poi_details_list:
                 if poi_[5]:
                     allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_[0] ,  poi_[4] )
@@ -236,6 +242,9 @@ def newmapUpdate(refreshENUM):
                 icon=folium.Icon(icon="cloud"),
             ).add_to(marker_cluster)
         
+        print("----after all filtering-----")
+        print(allTheHouses.head())
+
         st.session_state.housing_data_filtered = allTheHouses
         marker_cluster.add_to(st.session_state.map)
 
@@ -366,6 +375,8 @@ with tab1:
         col2.metric("Median Price", f"{MedianPrice}€")
         col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
 
+        # edited_df = st.experimental_data_editor(st.session_state.housing_data, height=800)
+
         edited_df = st.experimental_data_editor(st.session_state.housing_data_filtered, height=800)
 
 
@@ -378,7 +389,7 @@ with tab2:
 
     if uploaded_file is not None:
         # Can be used wherever a "file-like" object is accepted:
-        housesPoints = pd.read_csv(uploaded_file, sep=";", quotechar='"')
+        housesPoints = pd.read_csv(uploaded_file, sep="\t")
         housesPoints.columns = housesPoints.columns.str.lower()
         boolean_check_list = list(map(lambda x : x in housesPoints.columns, necessaryList))
 
@@ -393,6 +404,8 @@ with tab2:
             
             housesPoints = bm.string_to_digit(housesPoints)
             
+            print(housesPoints[['lon','lat','price','sqm']])
+
             st.session_state.housing_data = housesPoints
             st.success("Successful Data Load")
             st.experimental_show(housesPoints)
