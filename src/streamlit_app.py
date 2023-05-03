@@ -86,12 +86,11 @@ def search_Addresses(searchterm: str) -> List[Tuple[str, any]]:
 
             solutions = response['results']
 
-
             # first element will be shown in search, second is returned from component
             return [
                 (
                     suggestion["formatted"],
-                    [suggestion["lon"],suggestion["lat"]]
+                    [suggestion["lon"],suggestion["lat"], suggestion["formatted"]]
                 )
                 for suggestion in solutions
             ]
@@ -225,8 +224,8 @@ def newmapUpdate(refreshENUM):
 
         if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
             for poi_ in st.session_state.poi_details_list:
-                if poi_[5]:
-                    allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_[0] ,  poi_[4] )
+                if poi_.filtered:
+                    allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_.title ,  poi_.isolineObject )
 
         if allTheHouses.shape[0] >= 500:
             allTheHouses = allTheHouses.sample(n=500)
@@ -242,8 +241,8 @@ def newmapUpdate(refreshENUM):
                 icon=folium.Icon(icon="cloud"),
             ).add_to(marker_cluster)
         
-        print("----after all filtering-----")
-        print(allTheHouses.head())
+        # print("----after all filtering-----")
+        # print(allTheHouses.head())
 
         st.session_state.housing_data_filtered = allTheHouses
         marker_cluster.add_to(st.session_state.map)
@@ -292,13 +291,12 @@ with st.sidebar:
             elif address == "lon and lat":
                 st.error(f"POI Coordinates missing! 🚨")
             elif title in list(map(lambda x: x.title, st.session_state.poi_details_list)):
-                st.error(f"There is alread a POI with same title! 🚨")                
+                st.error(f"There is already a POI with same title! 🚨")                
             else:
+                print("-----The key------")
                 # Store the selected options in the session state 
                 isolineObject = isolineGet(address[1], address[0],dict_selection_mode[mode_of_transport], minutes_table*60, st.session_state.geo_API_Key )
                 poi_instnace = PoiDefinition(title, mode_of_transport , minutes_table, address, isolineObject, False)
-
-
 
                 st.session_state.poi_details_list.append( poi_instnace )
                 newmapUpdate("ISOCHRONES")
@@ -344,6 +342,7 @@ with tab1:
             st.write('### Point of Interests:')
             st.markdown(f"<hr />", unsafe_allow_html=True)
             for i, item in enumerate(st.session_state.poi_details_list):
+                print(item)
                 container_ = st.container()
                 with container_:
                     left , right  = st.columns([4,3])
@@ -351,6 +350,7 @@ with tab1:
                     left.markdown(f"**Poi Title**: {item.title}")
                     left.markdown(f"**Mode of Transportation**: {item.mode_of_transport}")
                     left.markdown(f"**Time Range**: {item.minutes_table} minutes")
+                    left.markdown(f"**Address**: {item.address[2]}")
 
                     # add a button to delete the item
                     right.button(f'Delete 🗑️ #{i+1}', on_click=del_single_isochrone, args=(i,), use_container_width =True)
@@ -389,7 +389,7 @@ with tab2:
 
     if uploaded_file is not None:
         # Can be used wherever a "file-like" object is accepted:
-        housesPoints = pd.read_csv(uploaded_file, sep="\t")
+        housesPoints = pd.read_csv(uploaded_file, sep=",")
         housesPoints.columns = housesPoints.columns.str.lower()
         boolean_check_list = list(map(lambda x : x in housesPoints.columns, necessaryList))
 
@@ -404,7 +404,7 @@ with tab2:
             
             housesPoints = bm.string_to_digit(housesPoints)
             
-            print(housesPoints[['lon','lat','price','sqm']])
+            # print(housesPoints[['lon','lat','price','sqm']])
 
             st.session_state.housing_data = housesPoints
             st.success("Successful Data Load")
