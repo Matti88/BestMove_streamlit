@@ -12,15 +12,36 @@ from streamlit_searchbox import st_searchbox
 from folium.plugins import MarkerCluster
 import bestMove.bestMove as bm
 from bestMove.poiObject import PoiDefinition
-
+from supabase import create_client, Client
+import supabase
 
 dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Public Transport': 'transit'}
-
+necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
 
 # Docs:
 # 1) session states: poi_details_list
 # 2) session states: map
 
+
+# Initialize connection.
+# Uses st.cache_resource to only run once.
+@st.cache_resource
+def init_connection():
+    url = st.secrets["supabase_url"]
+    key = st.secrets["supabase_key"]
+    return create_client(url, key)
+
+supabase = init_connection()
+
+# Perform query.
+# Uses st.cache_data to only rerun when the query changes or after 10 min.
+@st.cache_data(ttl=600)
+def run_query(table_name = "insertions"):
+    return supabase.table(table_name).select("*").execute()
+
+rows = run_query()
+st.session_state["housing_data_filtered"] = pd.DataFrame(rows.data)  
+st.session_state["housing_data"] = pd.DataFrame(rows.data)  
 
 if st.session_state["authenticated"]:
     #-----------------------------------FUNCTIONS----------------------------------
@@ -76,6 +97,8 @@ if st.session_state["authenticated"]:
         # extracting data in json format
         GeoJSONAreaOfPOI = r.json() 
         return GeoJSONAreaOfPOI
+    
+ 
 
     def isolineInsertion(GeoJSONAreaOfPOI, m):
         geoJson_Poi_area = folium.GeoJson(json.dumps(GeoJSONAreaOfPOI), 
@@ -188,6 +211,7 @@ if st.session_state["authenticated"]:
             if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
                 for poi_ in st.session_state.poi_details_list:
                     if poi_.filtered:
+                        print(allTheHouses)
                         allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_.title ,  poi_.isolineObject )
 
             if allTheHouses.shape[0] >= 500:
@@ -204,9 +228,6 @@ if st.session_state["authenticated"]:
                     icon=folium.Icon(icon="cloud"),
                 ).add_to(marker_cluster)
             
-            # print("----after all filtering-----")
-            # print(allTheHouses.head())
-
             st.session_state.housing_data_filtered = allTheHouses
             marker_cluster.add_to(st.session_state.map)
 
@@ -341,38 +362,8 @@ if st.session_state["authenticated"]:
  
     with tab2:
         st.subheader("Data")
-
-        uploaded_file = st.file_uploader("Upload your hosing data")
-        necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
-
-        if uploaded_file is not None:
-            # Can be used wherever a "file-like" object is accepted:
-            housesPoints = pd.read_csv(uploaded_file, sep=",")
-            housesPoints.columns = housesPoints.columns.str.lower()
-            boolean_check_list = list(map(lambda x : x in housesPoints.columns, necessaryList))
-
-
-            if all(boolean_check_list):
-
-                ## TODO - REMAKE the loading work and decide 
-                ##       - XLSX or CSV, and which type of CSV
-                # Replace commas with dots in the specified columns
-
-                housesPoints = pd.DataFrame(housesPoints).dropna(subset=['lon','lat','price','sqm'])
-                
-                housesPoints = bm.string_to_digit(housesPoints)
-                
-                # print(housesPoints[['lon','lat','price','sqm']])
-
-                st.session_state.housing_data = housesPoints
-                st.success("Successful Data Load")
-                st.experimental_show(housesPoints)
-            else:
-                missing_headers = [] 
-                for i, value in  enumerate(boolean_check_list):
-                    if not(value):
-                        missing_headers.append(necessaryList[i])
-                st.warning("Missing the headers: " + " - ".join(missing_headers))
+ 
+        st.experimental_show(st.session_state.housing_data)
     
 
 else:
