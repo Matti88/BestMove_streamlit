@@ -155,7 +155,75 @@ def init_connection():
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
 @st.cache_data(ttl=600)
 def run_query(table_name = "insertions"):
-    return supabase.table(table_name).select("*").execute()
+    query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
+    return supabase.table(table_name).select(query_statement).execute()
+
+# Macro Function:
+# Will get the command for 3 things:
+#     1) House refreshing:
+#     2) Search and Print all the new Isochrones (Pois)
+#     3) Delete existing POIs
+def newmapUpdate(refreshENUM):
+
+    print(f"REFRESHING TYPE: {refreshENUM}")
+
+    refresh_dict = {"ISOCHRONES_MARKERS": [True,True], "ISOCHRONES": [True,False], "MARKERS": [False,True] }
+    Isochrone_ = 0
+    Markers_ = 1
+    test_id_map_is_in_session_state = 'map' in st.session_state
+
+    # ISOCHRONE Refreshing
+    if refresh_dict[refreshENUM][Isochrone_] and test_id_map_is_in_session_state:
+
+        removing_geoJson(st.session_state.map)
+
+        for isoline_ in st.session_state.poi_details_list:
+            isolineInsertion(isoline_.isolineObject, st.session_state.map)
+
+    # MARKERS Refreshing
+    if refresh_dict[refreshENUM][Markers_] and test_id_map_is_in_session_state:
+
+        #st.session_state.map = removing_mk(st.session_state.map)
+        removing_mk(st.session_state.map)
+
+        allTheHouses = st.session_state.housing_data
+        allTheHouses = allTheHouses[allTheHouses['price']<=st.session_state.price_max]
+
+        print("\n----after price filtering-----")
+        print(allTheHouses.shape)
+        
+        allTheHouses = allTheHouses[allTheHouses['sqm']>=st.session_state.sqm_min]
+        print("\n----after sqm filtering-----")
+        print(allTheHouses.shape)
+
+        if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
+            for poi_ in st.session_state.poi_details_list:
+                if poi_.filtered:
+                    allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_.title ,  poi_.isolineObject )
+
+        if allTheHouses.shape[0] >= 500:
+            allTheHouses = allTheHouses.sample(n=500)
+                    
+        # Create a marker cluster layer
+        marker_cluster = MarkerCluster(name="Markers")
+
+        # Add some fake markers to the map
+        for row_ in allTheHouses.iterrows():
+            folium.Marker(
+                location=[row_[1]['lat'],row_[1]['lon']],
+                popup = f"Price: {row_[1]['price']} <br/> Sqm: {row_[1]['sqm']} Link: <a href='https://www.willhaben.at{row_[1]['link']}' target='_blank'>{row_[1]['link']}</a>",
+                icon=folium.Icon(icon="cloud"),
+            ).add_to(marker_cluster)
+        
+        st.session_state.housing_data_filtered = allTheHouses
+        marker_cluster.add_to(st.session_state.map)
+
+
+# loading data into dataframe and then into session
+supabase = init_connection()
+rows = run_query()
+st.session_state["housing_data_filtered"] = pd.DataFrame(rows.data)  
+st.session_state["housing_data"] = pd.DataFrame(rows.data)
 
 # initialize session state authenticated
 if 'authenticated' not in st.session_state:
@@ -163,74 +231,6 @@ if 'authenticated' not in st.session_state:
 
 if st.session_state["authenticated"]:
  
-    # loading data into dataframe and then into session
-    supabase = init_connection()
-    rows = run_query()
-    st.session_state["housing_data_filtered"] = pd.DataFrame(rows.data)  
-    st.session_state["housing_data"] = pd.DataFrame(rows.data)
-
-    # Macro Function:
-    # Will get the command for 3 things:
-    #     1) House refreshing:
-    #     2) Search and Print all the new Isochrones (Pois)
-    #     3) Delete existing POIs
-    def newmapUpdate(refreshENUM):
-
-        print(f"REFRESHING TYPE: {refreshENUM}")
-
-        refresh_dict = {"ISOCHRONES_MARKERS": [True,True], "ISOCHRONES": [True,False], "MARKERS": [False,True] }
-        Isochrone_ = 0
-        Markers_ = 1
-    
-        test_id_map_is_in_session_state = 'map' in st.session_state
-
-        # ISOCHRONE Refreshing
-        if refresh_dict[refreshENUM][Isochrone_] and test_id_map_is_in_session_state:
-
-            removing_geoJson(st.session_state.map)
-
-            for isoline_ in st.session_state.poi_details_list:
-                isolineInsertion(isoline_.isolineObject, st.session_state.map)
-
-        # MARKERS Refreshing
-        if refresh_dict[refreshENUM][Markers_] and test_id_map_is_in_session_state:
-
-            #st.session_state.map = removing_mk(st.session_state.map)
-            removing_mk(st.session_state.map)
-
-            allTheHouses = st.session_state.housing_data
-            allTheHouses = allTheHouses[allTheHouses['price']<=st.session_state.price_max]
-
-            print("\n----after price filtering-----")
-            print(allTheHouses.shape)
-            
-            allTheHouses = allTheHouses[allTheHouses['sqm']>=st.session_state.sqm_min]
-            print("\n----after sqm filtering-----")
-            print(allTheHouses.shape)
-
-            if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
-                for poi_ in st.session_state.poi_details_list:
-                    if poi_.filtered:
-                        allTheHouses = bm.add_poi_colum_selection(allTheHouses,  poi_.title ,  poi_.isolineObject )
-
-            if allTheHouses.shape[0] >= 500:
-                allTheHouses = allTheHouses.sample(n=500)
-                        
-            # Create a marker cluster layer
-            marker_cluster = MarkerCluster(name="Markers")
-
-            # Add some fake markers to the map
-            for row_ in allTheHouses.iterrows():
-                folium.Marker(
-                    location=[row_[1]['lat'],row_[1]['lon']],
-                    popup = f"Price: {row_[1]['price']} <br/> Sqm: {row_[1]['sqm']} Link: <a href='https://www.willhaben.at{row_[1]['link']}' target='_blank'>{row_[1]['link']}</a>",
-                    icon=folium.Icon(icon="cloud"),
-                ).add_to(marker_cluster)
-            
-            st.session_state.housing_data_filtered = allTheHouses
-            marker_cluster.add_to(st.session_state.map)
-
-    
     # #-----------------------------------STRUCTURE-------------------------------------
 
     tab1, tab2 = st.tabs(["Pois and Filters" , "Data"])
@@ -279,7 +279,7 @@ if st.session_state["authenticated"]:
                 st.session_state.sqm_min = st.number_input("Min m\u00B2 space ", min_value=10, max_value=200 , step=1 , value=40, disabled=False, label_visibility="visible")
                 st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
   
-        left_main , right_main  = st.columns([7,2])
+        left_main , right_main  = st.columns([8,2])
 
         # loading MAp
         if 'map' in st.session_state :
@@ -336,22 +336,43 @@ if st.session_state["authenticated"]:
             col2.metric("Median Price", f"{MedianPrice}€")
             col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
 
-            # edited_df = st.experimental_data_editor(st.session_state.housing_data, height=800)
+            # Displaying 
+            st.data_editor(
+                st.session_state.housing_data_filtered,
+                column_config={
+                    "price": st.column_config.ProgressColumn(
+                        "Rental Price",
+                        help="Rental Price",
+                        format="$%f",
+                        min_value=0,
+                        max_value=3000,
+                        ),
+                    "link": st.column_config.ImageColumn(
+                        "House Image", help="Streamlit app preview screenshots"
+                    )
+            },
+            hide_index=True,
+            )
 
-            edited_df = st.data_editor(st.session_state.housing_data_filtered, height=800)
 
     with tab2:
         st.subheader("Data")
         st.data_editor(
                     st.session_state.housing_data,
                     column_config={
+                        "price": st.column_config.ProgressColumn(
+                            "Rental Price",
+                            help="Rental Price",
+                            format="$%f",
+                            min_value=0,
+                            max_value=3000,
+                            ),
                         "link": st.column_config.ImageColumn(
                             "House Image", help="Streamlit app preview screenshots"
                         )
                     },
-                    hide_index=True,
+                    hide_index=True, height=800
                     )
-    
 
 else:
 
