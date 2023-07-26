@@ -5,7 +5,6 @@ from streamlit_supabase_auth import login_form, logout_button
 from supabase import create_client, Client
 import supabase
 
-
 #-----------------------------------CONFIG-------------------------------------
 # page configurations
 st.set_page_config(
@@ -59,6 +58,10 @@ st.session_state["SUPABASE_KEY"] = st.secrets["SUPABASE_KEY"]
 # initialize session state authenticated
 if 'authenticated' not in st.session_state:
     st.session_state["authenticated"] = False
+
+#-----------------------------------STYLE-------------------------------------
+with open('style.css') as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 #-----------------------------------CONTENT-------------------------------------
