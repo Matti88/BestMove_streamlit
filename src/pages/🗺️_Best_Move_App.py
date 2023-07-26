@@ -19,8 +19,14 @@ dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Pub
 necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
 
 #-----------------------------------STYLE-------------------------------------
-with open('style.css') as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+st.markdown("""
+            <style> 
+            .block-container.css-z5fcl4 
+            { padding: 1.5rem !important; }
+            </style>
+            """,
+             unsafe_allow_html=True)
 
 #-----------------------------------FUNCTIONS----------------------------------
 # searching for address with geoAPIfy
@@ -222,8 +228,12 @@ def newmapUpdate(refreshENUM):
 # loading data into dataframe and then into session
 supabase = init_connection()
 rows = run_query()
-st.session_state["housing_data_filtered"] = pd.DataFrame(rows.data)  
-st.session_state["housing_data"] = pd.DataFrame(rows.data)
+if "housing_data_filtered" not in st.session_state:
+    st.session_state["housing_data_filtered"] = pd.DataFrame(rows.data)  
+
+if "housing_data" not in st.session_state:
+    st.session_state["housing_data"] = pd.DataFrame(rows.data)
+
 
 # initialize session state authenticated
 if 'authenticated' not in st.session_state:
@@ -236,6 +246,7 @@ if st.session_state["authenticated"]:
     tab1, tab2 = st.tabs(["Pois and Filters" , "Data"])
 
     with tab1:
+
         with st.expander("Point Of Interests"):
             
             address = st_searchbox(
@@ -280,7 +291,8 @@ if st.session_state["authenticated"]:
                 st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
   
         left_main , right_main  = st.columns([8,2])
-
+        
+        
         # loading MAp
         if 'map' in st.session_state :
             if st.session_state.map == "":
@@ -288,6 +300,7 @@ if st.session_state["authenticated"]:
 
         # Display the POIs
         with left_main:
+            st.subheader("Map")
             st_folium(
                 st.session_state.map, 
                 key="old",
@@ -321,23 +334,27 @@ if st.session_state["authenticated"]:
                     
                     st.markdown(f"<hr />", unsafe_allow_html=True)
                     
-
             else:
                 st.write('No Point of Interest searched and loaded')
 
         if 'housing_data_filtered' in st.session_state:
+            print("passing by the tests of hosing data filtered")
             col1, col2, col3 = st.columns(3)
             housing_df = st.session_state.housing_data_filtered
             CountOfOffers = housing_df.shape[0]
             MedianPrice = housing_df['price'].median()
             MedianSqm = housing_df['sqm'].median()
+            print(housing_df.shape)
+            print(CountOfOffers)
+            print(MedianPrice)
+            print(MedianSqm)
 
             col1.metric("Number of Listings", f"{CountOfOffers}")
             col2.metric("Median Price", f"{MedianPrice}€")
             col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
 
             # Displaying 
-            st.data_editor(
+            st.dataframe(
                 st.session_state.housing_data_filtered,
                 column_config={
                     "price": st.column_config.ProgressColumn(
@@ -357,13 +374,13 @@ if st.session_state["authenticated"]:
 
     with tab2:
         st.subheader("Data")
-        st.data_editor(
+        st.dataframe(
                     st.session_state.housing_data,
                     column_config={
                         "price": st.column_config.ProgressColumn(
                             "Rental Price",
                             help="Rental Price",
-                            format="$%f",
+                            format="€ %f",
                             min_value=0,
                             max_value=3000,
                             ),

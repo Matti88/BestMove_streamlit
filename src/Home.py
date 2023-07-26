@@ -12,16 +12,6 @@ st.set_page_config(
     page_icon="🗺️",
     layout="wide",
 )
-
-# Initialize connection.
-# Uses st.cache_resource to only run once.
-@st.cache_resource
-def init_connection():
-    url = st.secrets["supabase_url"]
-    key = st.secrets["supabase_key"]
-    return create_client(url, key)
-
-supabase = init_connection()
  
 # initialize session state with an empty list for the to-do items
 if 'poi_details_list' not in st.session_state:
@@ -60,8 +50,14 @@ if 'authenticated' not in st.session_state:
     st.session_state["authenticated"] = False
 
 #-----------------------------------STYLE-------------------------------------
-with open('style.css') as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+st.markdown("""
+            <style> 
+            .block-container.css-z5fcl4 
+            { padding: 1.5rem !important; }
+            </style>
+            """,
+             unsafe_allow_html=True)
 
 
 #-----------------------------------CONTENT-------------------------------------
