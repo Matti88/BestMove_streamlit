@@ -161,7 +161,7 @@ def init_connection():
 @st.cache_data(ttl=600)
 def run_query(table_name = "insertions"):
     query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
-    return st.table(table_name).select(query_statement).execute()
+    return supabase.table(table_name).select(query_statement).execute()
 
 # Macro Function:
 # Will get the command for 3 things:
@@ -337,16 +337,11 @@ if st.session_state["authenticated"]:
                 st.write('No Point of Interest searched and loaded')
 
         if 'housing_data_filtered' in st.session_state:
-            print("passing by the tests of hosing data filtered")
             col1, col2, col3 = st.columns(3)
             housing_df = st.session_state.housing_data_filtered
             CountOfOffers = housing_df.shape[0]
             MedianPrice = housing_df['price'].median()
             MedianSqm = housing_df['sqm'].median()
-            print(housing_df.shape)
-            print(CountOfOffers)
-            print(MedianPrice)
-            print(MedianSqm)
 
             col1.metric("Number of Listings", f"{CountOfOffers}")
             col2.metric("Median Price", f"{MedianPrice}€")
