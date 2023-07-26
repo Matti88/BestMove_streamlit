@@ -1,6 +1,5 @@
 
 from __future__ import annotations
-import streamlit as st
 from streamlit_folium import st_folium
 import folium
 import folium.features
@@ -13,7 +12,7 @@ from folium.plugins import MarkerCluster
 import bestMove.bestMove as bm
 from bestMove.poiObject import PoiDefinition
 from supabase import create_client, Client
-import supabase
+import streamlit as st
 
 dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Public Transport': 'transit'}
 necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
@@ -162,7 +161,7 @@ def init_connection():
 @st.cache_data(ttl=600)
 def run_query(table_name = "insertions"):
     query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
-    return supabase.table(table_name).select(query_statement).execute()
+    return st.table(table_name).select(query_statement).execute()
 
 # Macro Function:
 # Will get the command for 3 things:
