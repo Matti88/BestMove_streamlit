@@ -75,6 +75,59 @@ def main():
         st.session_state["authenticated"] = True
         logout_button()
 
-
 if __name__ == "__main__":
     main()
+
+with st.expander("Privacy Policy"):
+    st.markdown(
+        """
+        Privacy Policy
+
+        Introduction
+
+        This privacy policy (the "Policy") describes how "bestmove" (the "Company") collects, uses, and discloses your personal information when you use our website [bestmove.streamlit.app] (the "Website") or our app (the "App").
+
+        Information We Collect
+
+        We collect the following information from you when you use the Website or App:
+
+        Personal information you provide us: We collect the personal information you provide us when you create an account, such as your name, email address, and password.
+        Information about your usage of the Website or App: We collect information about how you use the Website or App, such as the pages you visit, the features you use, and the time and date of your visits.
+        Information from third-party services: We may collect information from third-party services, such as Google Analytics, to help us understand how you use the Website or App.
+        How We Use Your Information
+
+        We use your information for the following purposes:
+
+        To provide you with the Website or App: We use your information to provide you with the Website or App and to deliver the features and services you request.
+        To improve the Website or App: We use your information to improve the Website or App and to develop new features and services.
+        To communicate with you: We use your information to communicate with you about the Website or App, such as sending you emails about new features or updates.
+        To market to you: We may use your information to market to you about our products and services.
+        Disclosure of Your Information
+
+        We may disclose your information to the following third parties:
+
+        Our service providers: We may share your information with our service providers who help us operate the Website or App, such as hosting providers and email service providers.
+        Advertising partners: We may share your information with our advertising partners who help us deliver targeted advertising to you.
+        Legal authorities: We may disclose your information to legal authorities if we are required to do so by law.
+        Your Rights
+
+        You have the following rights with respect to your information:
+
+        Access: You have the right to access your information that we collect.
+        Correction: You have the right to correct any inaccurate or incomplete information that we collect about you.
+        Deletion: You have the right to request that we delete your information.
+        Objection: You have the right to object to our processing of your information.
+        Withdrawal of consent: You have the right to withdraw your consent to our processing of your information at any time.
+        How to Contact Us
+
+        If you have any questions about this Policy, please contact us at matteo.montanari25@gmail.com .
+
+        Changes to this Policy
+
+        We may update this Policy from time to time. The most recent version of the Policy will always be posted on the Website.
+
+        Effective Date
+
+        This Policy is effective as of 27th July 2023.
+        """
+        )    
