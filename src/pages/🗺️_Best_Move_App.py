@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from streamlit_folium import st_folium
 import folium
