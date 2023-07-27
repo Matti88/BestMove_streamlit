@@ -22,7 +22,7 @@ necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
 st.markdown("""
             <style> 
             .block-container.css-z5fcl4 
-            { padding: 1.5rem !important; }
+            { padding: 1.5rem 1.2rem, 1.5rem !important; }
             </style>
             """,
              unsafe_allow_html=True)
@@ -241,149 +241,127 @@ if 'authenticated' not in st.session_state:
 if st.session_state["authenticated"]:
  
     # #-----------------------------------STRUCTURE-------------------------------------
+    st.subheader("Selectors")
+    with st.expander("Point Of Interests"):
+        
+        address = st_searchbox(
+            search_function=search_Addresses,
+            placeholder="Address",
+            label="Search Point of Interest Address",
+            default="lon and lat",
+            clear_on_submit=False,
+            clearable=True,
+            key="searching_Address"
+        )
 
-    tab1, tab2 = st.tabs(["Pois and Filters" , "Data"])
+        with st.form("poi_form"):
 
-    with tab1:
+            title = st.text_input("Title of your Point of Interest")
+            mode_of_transport = st.selectbox("Choose mode of transport", options=['🚶 Walking', '🚗 Car', '🚆 Public Transport'])
+            minutes_table = st.selectbox("Select time interval in minutes", options=[5, 10, 15, 20, 30, 45, 60])
+        
+            if st.form_submit_button("Add Poi Isochrone", use_container_width=True):
+                # checking if the title is present
+                if title == "":
+                    st.error(f"Title is missing! 🚨")
+                elif address == "lon and lat":
+                    st.error(f"POI Coordinates missing! 🚨")
+                elif title in list(map(lambda x: x.title, st.session_state.poi_details_list)):
+                    st.error(f"There is already a POI with same title! 🚨")                
+                else:
+                    print("-----The key------")
+                    # Store the selected options in the session state 
+                    isolineObject = isolineGet(address[1], address[0],dict_selection_mode[mode_of_transport], minutes_table*60, st.session_state.geo_API_Key )
+                    poi_instnace = PoiDefinition(title, mode_of_transport , minutes_table, address, isolineObject, False)
 
-        with st.expander("Point Of Interests"):
-            
-            address = st_searchbox(
-                search_function=search_Addresses,
-                placeholder="Address",
-                label="Search Point of Interest Address",
-                default="lon and lat",
-                clear_on_submit=False,
-                clearable=True,
-                key="searching_Address"
+                    st.session_state.poi_details_list.append( poi_instnace )
+                    newmapUpdate("ISOCHRONES")        
+
+    with st.expander("Filters"):
+        # prices and squared meters
+        with st.form("price_sqm_form"):
+            st.subheader("Price and Space filtering")
+            st.session_state.price_max = st.number_input("Max Rental Price", min_value=400, max_value=3000, step=1 , value=800, disabled=False, label_visibility="visible")
+            st.session_state.sqm_min = st.number_input("Min m\u00B2 space ", min_value=10, max_value=200 , step=1 , value=40, disabled=False, label_visibility="visible")
+            st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
+
+    left_main , right_main  = st.columns([8,2])
+    
+    
+    # loading MAp
+    if 'map' in st.session_state :
+        if st.session_state.map == "":
+            st.session_state.map = load_map()
+
+    # Display the POIs
+    with left_main:
+        st.subheader("Map")
+        st_folium(
+            st.session_state.map, 
+            key="old",
+            height=700,
+            width=1200,
+            returned_objects=[]
             )
-
-            with st.form("poi_form"):
-
-                title = st.text_input("Title of your Point of Interest")
-                mode_of_transport = st.selectbox("Choose mode of transport", options=['🚶 Walking', '🚗 Car', '🚆 Public Transport'])
-                minutes_table = st.selectbox("Select time interval in minutes", options=[5, 10, 15, 20, 30, 45, 60])
-            
-                if st.form_submit_button("Add Poi Isochrone", use_container_width=True):
-                    # checking if the title is present
-                    if title == "":
-                        st.error(f"Title is missing! 🚨")
-                    elif address == "lon and lat":
-                        st.error(f"POI Coordinates missing! 🚨")
-                    elif title in list(map(lambda x: x.title, st.session_state.poi_details_list)):
-                        st.error(f"There is already a POI with same title! 🚨")                
-                    else:
-                        print("-----The key------")
-                        # Store the selected options in the session state 
-                        isolineObject = isolineGet(address[1], address[0],dict_selection_mode[mode_of_transport], minutes_table*60, st.session_state.geo_API_Key )
-                        poi_instnace = PoiDefinition(title, mode_of_transport , minutes_table, address, isolineObject, False)
-
-                        st.session_state.poi_details_list.append( poi_instnace )
-                        newmapUpdate("ISOCHRONES")        
-
-        with st.expander("Filters"):
-            # prices and squared meters
-            with st.form("price_sqm_form"):
-                st.subheader("Price and Space filtering")
-                st.session_state.price_max = st.number_input("Max Rental Price", min_value=400, max_value=3000, step=1 , value=800, disabled=False, label_visibility="visible")
-                st.session_state.sqm_min = st.number_input("Min m\u00B2 space ", min_value=10, max_value=200 , step=1 , value=40, disabled=False, label_visibility="visible")
-                st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
-  
-        left_main , right_main  = st.columns([8,2])
         
-        
-        # loading MAp
-        if 'map' in st.session_state :
-            if st.session_state.map == "":
-                st.session_state.map = load_map()
+    # Display the map
+    with right_main:
+        # display the current to-do list
+        if len(st.session_state.poi_details_list) > 0:
+            st.write('### Point of Interests:')
+            st.markdown(f"<hr />", unsafe_allow_html=True)
+            for i, item in enumerate(st.session_state.poi_details_list):
+                container_ = st.container()
+                with container_:
+                    left , right  = st.columns([4,3])
+                    # add an item card
+                    left.markdown(f"**Poi Title**: {item.title}")
+                    left.markdown(f"**Mode of Transportation**: {item.mode_of_transport}")
+                    left.markdown(f"**Time Range**: {item.minutes_table} minutes")
+                    left.markdown(f"**Address**: {item.address[2]}")
 
-        # Display the POIs
-        with left_main:
-            st.subheader("Map")
-            st_folium(
-                st.session_state.map, 
-                key="old",
-                height=700,
-                width=1200,
-                returned_objects=[]
-                )
-            
-        # Display the map
-        with right_main:
-            # display the current to-do list
-            if len(st.session_state.poi_details_list) > 0:
-                st.write('### Point of Interests:')
+                    # add a button to delete the item
+                    right.button(f'Delete 🗑️ #{i+1}', on_click=del_single_isochrone, args=(i,), use_container_width =True)
+
+                    # Filter markers by POI
+                    right.checkbox(f'Keep listings in this area: #{i+1}', value=item.filtered, on_change=poi_selection_switch, args=(i,))
+                
                 st.markdown(f"<hr />", unsafe_allow_html=True)
-                for i, item in enumerate(st.session_state.poi_details_list):
-                    print(item)
-                    container_ = st.container()
-                    with container_:
-                        left , right  = st.columns([4,3])
-                        # add an item card
-                        left.markdown(f"**Poi Title**: {item.title}")
-                        left.markdown(f"**Mode of Transportation**: {item.mode_of_transport}")
-                        left.markdown(f"**Time Range**: {item.minutes_table} minutes")
-                        left.markdown(f"**Address**: {item.address[2]}")
+                
+        else:
+            st.write('No Point of Interest searched and loaded')
 
-                        # add a button to delete the item
-                        right.button(f'Delete 🗑️ #{i+1}', on_click=del_single_isochrone, args=(i,), use_container_width =True)
+    st.subheader("Listings")
+    if 'housing_data_filtered' in st.session_state:
+        col1, col2, col3 = st.columns(3)
+        housing_df = st.session_state.housing_data_filtered
+        CountOfOffers = housing_df.shape[0]
+        MedianPrice = housing_df['price'].median()
+        MedianSqm = housing_df['sqm'].median()
 
-                        # Filter markers by POI
-                        right.checkbox(f'Keep listings in this area: #{i+1}', value=item.filtered, on_change=poi_selection_switch, args=(i,))
-                    
-                    st.markdown(f"<hr />", unsafe_allow_html=True)
-                    
-            else:
-                st.write('No Point of Interest searched and loaded')
+        col1.metric("Number of Listings", f"{CountOfOffers}")
+        col2.metric("Median Price", f"{MedianPrice}€")
+        col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
 
-        if 'housing_data_filtered' in st.session_state:
-            col1, col2, col3 = st.columns(3)
-            housing_df = st.session_state.housing_data_filtered
-            CountOfOffers = housing_df.shape[0]
-            MedianPrice = housing_df['price'].median()
-            MedianSqm = housing_df['sqm'].median()
-
-            col1.metric("Number of Listings", f"{CountOfOffers}")
-            col2.metric("Median Price", f"{MedianPrice}€")
-            col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
-
-            # Displaying 
-            st.dataframe(
-                st.session_state.housing_data_filtered,
-                column_config={
-                    "price": st.column_config.ProgressColumn(
-                        "Rental Price",
-                        help="Rental Price",
-                        format="$%f",
-                        min_value=0,
-                        max_value=3000,
-                        ),
-                    "link": st.column_config.ImageColumn(
-                        "House Image", help="Streamlit app preview screenshots"
-                    )
-            },
-            hide_index=True,
-            )
-
-
-    with tab2:
-        st.subheader("Data")
+        # Displaying 
         st.dataframe(
-                    st.session_state.housing_data,
-                    column_config={
-                        "price": st.column_config.ProgressColumn(
-                            "Rental Price",
-                            help="Rental Price",
-                            format="€ %f",
-                            min_value=0,
-                            max_value=3000,
-                            ),
-                        "link": st.column_config.ImageColumn(
-                            "House Image", help="Streamlit app preview screenshots"
-                        )
-                    },
-                    hide_index=True, height=800
-                    )
+            st.session_state.housing_data_filtered,
+            column_config={
+                "price": st.column_config.ProgressColumn(
+                    "Rental Price",
+                    help="Rental Price",
+                    format="$%f",
+                    min_value=0,
+                    max_value=3000,
+                    ),
+                "link": st.column_config.ImageColumn(
+                    "House Image", help="Streamlit app preview screenshots"
+                )
+        },
+        hide_index=True,
+        )
+
+ 
 
 else:
 
