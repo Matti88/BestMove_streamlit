@@ -12,6 +12,8 @@ import bestMove.bestMove as bm
 from bestMove.poiObject import PoiDefinition
 from supabase import create_client, Client
 import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Public Transport': 'transit'}
 necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
@@ -47,7 +49,7 @@ def search_Addresses(searchterm: str) -> List[Tuple[str, any]]:
             # API call to get list of suggestions
             response = requests.get(
                 f"https://api.geoapify.com/v1/geocode/autocomplete?text={searchterm}&format=json&apiKey={st.session_state.geo_API_Key}",
-                timeout=5,
+                timeout=100,
             ).json()
 
             solutions = response['results']
@@ -158,9 +160,14 @@ def init_connection():
 # Perform query.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
 @st.cache_data(ttl=600)
-def run_query(table_name = "insertions"):
-    query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
-    return supabase.table(table_name).select(query_statement).execute()
+def run_query(table_name = "insertions", sqm = "", price = ""):
+    print(sqm, price)
+    if sqm == "" and price == "":
+        query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
+        return supabase.table(table_name).select(query_statement).execute()
+    else:
+        query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
+        return supabase.table(table_name).select(query_statement).gte('sqm',sqm).lte('price', price).execute()
 
 # Macro Function:
 # Will get the command for 3 things:
@@ -190,15 +197,7 @@ def newmapUpdate(refreshENUM):
         #st.session_state.map = removing_mk(st.session_state.map)
         removing_mk(st.session_state.map)
 
-        allTheHouses = st.session_state.housing_data
-        allTheHouses = allTheHouses[allTheHouses['price']<=st.session_state.price_max]
-
-        print("\n----after price filtering-----")
-        print(allTheHouses.shape)
-        
-        allTheHouses = allTheHouses[allTheHouses['sqm']>=st.session_state.sqm_min]
-        print("\n----after sqm filtering-----")
-        print(allTheHouses.shape)
+        allTheHouses = pd.DataFrame(run_query("insertions", st.session_state.sqm_min ,st.session_state.price_max).data)
 
         if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
             for poi_ in st.session_state.poi_details_list:
@@ -222,6 +221,14 @@ def newmapUpdate(refreshENUM):
         st.session_state.housing_data_filtered = allTheHouses
         marker_cluster.add_to(st.session_state.map)
 
+# Function to create and display the distribution plot
+def plot_distribution(column_data, plotTitle="Distribution Plot", plotVariable="Column Values"):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(column_data, kde=True, ax=ax)  # You can use different plots like sns.distplot for older versions
+    ax.set_xlabel(plotVariable)
+    ax.set_ylabel('Frequency')
+    ax.set_title(plotTitle)
+    st.pyplot(fig)
 
 # loading data into dataframe and then into session
 supabase = init_connection()
@@ -232,6 +239,11 @@ if "housing_data_filtered" not in st.session_state:
 if "housing_data" not in st.session_state:
     st.session_state["housing_data"] = pd.DataFrame(rows.data)
 
+if "sqm_min" not in st.session_state:
+    st.session_state["sqm_min"] = 40
+
+if "price_max" not in st.session_state:
+    st.session_state["price_max"] = 800
 
 # initialize session state authenticated
 if 'authenticated' not in st.session_state:
@@ -332,15 +344,21 @@ if st.session_state["authenticated"]:
 
     st.subheader("Listings")
     if 'housing_data_filtered' in st.session_state:
-        col1, col2, col3 = st.columns(3)
+        #col1, col2, col3, col4, col5= st.columns(5)
+        col1, col2, col3, col4, col5 = st.columns([1,1,2,1,2])
         housing_df = st.session_state.housing_data_filtered
         CountOfOffers = housing_df.shape[0]
-        MedianPrice = housing_df['price'].median()
-        MedianSqm = housing_df['sqm'].median()
+        MedianPrice = round(housing_df['price'].median(),0)
+        MinPrice, MaxPrice = round(housing_df['price'].min(),0), round(housing_df['price'].max(),0)
+        MedianSqm = round(housing_df['sqm'].median(),0)
 
         col1.metric("Number of Listings", f"{CountOfOffers}")
         col2.metric("Median Price", f"{MedianPrice}€")
-        col3.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
+        with col3:
+            plot_distribution(housing_df['price'], "Price Distribution", "Price")
+        col4.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
+        with col5:
+            plot_distribution(housing_df['sqm'], "m\u00b2 Distribution", "Squared Meters")
 
         # Displaying 
         st.dataframe(
@@ -350,8 +368,8 @@ if st.session_state["authenticated"]:
                     "Rental Price",
                     help="Rental Price",
                     format="$%f",
-                    min_value=0,
-                    max_value=3000,
+                    min_value=MinPrice,
+                    max_value=MaxPrice,
                     ),
                 "link": st.column_config.ImageColumn(
                     "House Image", help="Streamlit app preview screenshots"
