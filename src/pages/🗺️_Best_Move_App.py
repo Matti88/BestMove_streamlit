@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 dict_selection_mode =  { '🚶 Walking': 'walk', '🚗 Car' : 'drive', '🚆 Public Transport': 'transit'}
-necessaryList = ["address", "lon", "lat", "price", "sqm","link"]
+necessaryList = ["address", "lon", "lat", "price_num", "sqm_num","insertionpage", "thumbnail_image"]
 
 #-----------------------------------STYLE-------------------------------------
 
@@ -160,14 +160,14 @@ def init_connection():
 # Perform query.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
 @st.cache_data(ttl=600)
-def run_query(table_name = "insertions", sqm = "", price = ""):
-    print(sqm, price)
-    if sqm == "" and price == "":
-        query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
+def run_query(table_name = "clean_insertions", sqm_num = "", price_num = ""):
+    print(sqm_num, price_num)
+    if sqm_num == "" and price_num == "":
+        query_statement = 'insertionpage, agency ,   thumbnail_image, title, sqm_num, address, otherinfo, otherinfo_2,price_num, lat, lon'
         return supabase.table(table_name).select(query_statement).execute()
     else:
-        query_statement = 'link,  price, title, sqm, address, feature1, feature2, lat, lon'
-        return supabase.table(table_name).select(query_statement).gte('sqm',sqm).lte('price', price).execute()
+        query_statement = 'insertionpage, agency ,   thumbnail_image, title, sqm_num, address, otherinfo, otherinfo_2,price_num, lat, lon'
+        return supabase.table(table_name).select(query_statement).gte('sqm_num',sqm_num).lte('price_num', price_num).execute()
 
 # Macro Function:
 # Will get the command for 3 things:
@@ -197,7 +197,7 @@ def newmapUpdate(refreshENUM):
         #st.session_state.map = removing_mk(st.session_state.map)
         removing_mk(st.session_state.map)
 
-        allTheHouses = pd.DataFrame(run_query("insertions", st.session_state.sqm_min ,st.session_state.price_max).data)
+        allTheHouses = pd.DataFrame(run_query("clean_insertions", st.session_state.sqm_min ,st.session_state.price_max).data)
 
         if any(list(map(lambda x: x.filtered, st.session_state.poi_details_list ))):
             for poi_ in st.session_state.poi_details_list:
@@ -214,7 +214,7 @@ def newmapUpdate(refreshENUM):
         for row_ in allTheHouses.iterrows():
             folium.Marker(
                 location=[row_[1]['lat'],row_[1]['lon']],
-                popup = f"Price: {row_[1]['price']} <br/> Sqm: {row_[1]['sqm']} Link: <a href='https://www.willhaben.at{row_[1]['link']}' target='_blank'>{row_[1]['link']}</a>",
+                popup = f"Price: {row_[1]['price_num']} <br/> Sqm: {row_[1]['sqm_num']} <br/> <a href='http://www.willhaben.at{row_[1]['insertionpage']}' target='_blank'> <img src='{row_[1]['thumbnail_image']}' alt='Thumbnail' height='200' width='250'> </a> <br/> Link: <a href='http://www.willhaben.at{row_[1]['insertionpage']}' target='_blank'>Link to Listing</a>",
                 icon=folium.Icon(icon="cloud"),
             ).add_to(marker_cluster)
         
@@ -243,7 +243,7 @@ if "sqm_min" not in st.session_state:
     st.session_state["sqm_min"] = 40
 
 if "price_max" not in st.session_state:
-    st.session_state["price_max"] = 800
+    st.session_state["price_max"] = 150000
 
 # initialize session state authenticated
 if 'authenticated' not in st.session_state:
@@ -292,7 +292,7 @@ if st.session_state["authenticated"]:
         # prices and squared meters
         with st.form("price_sqm_form"):
             st.subheader("Price and Space filtering")
-            st.session_state.price_max = st.number_input("Max Rental Price", min_value=400, max_value=3000, step=1 , value=800, disabled=False, label_visibility="visible")
+            st.session_state.price_max = st.number_input("Max Price", min_value=100000, max_value=3000000, step=1 , value=150000, disabled=False, label_visibility="visible")
             st.session_state.sqm_min = st.number_input("Min m\u00B2 space ", min_value=10, max_value=200 , step=1 , value=40, disabled=False, label_visibility="visible")
             st.form_submit_button("Filter", use_container_width=True, on_click=prefiltering_checks)
 
@@ -348,34 +348,36 @@ if st.session_state["authenticated"]:
         col1, col2, col3, col4, col5 = st.columns([1,1,2,1,2])
         housing_df = st.session_state.housing_data_filtered
         CountOfOffers = housing_df.shape[0]
-        MedianPrice = round(housing_df['price'].median(),0)
-        MinPrice, MaxPrice = round(housing_df['price'].min(),0), round(housing_df['price'].max(),0)
-        MedianSqm = round(housing_df['sqm'].median(),0)
+        MedianPrice = round(housing_df['price_num'].median(),0)
+        MinPrice, MaxPrice = round(housing_df['price_num'].min(),0), round(housing_df['price_num'].max(),0)
+        MedianSqm = round(housing_df['sqm_num'].median(),0)
 
         col1.metric("Number of Listings", f"{CountOfOffers}")
         col2.metric("Median Price", f"{MedianPrice}€")
         with col3:
-            plot_distribution(housing_df['price'], "Price Distribution", "Price")
+            plot_distribution(housing_df['price_num'], "Price Distribution", "Price")
         col4.metric("Median Squared Meters", f"{MedianSqm}m\u00B2")
         with col5:
-            plot_distribution(housing_df['sqm'], "m\u00b2 Distribution", "Squared Meters")
+            plot_distribution(housing_df['sqm_num'], "m\u00b2 Distribution", "Squared Meters")
 
         # Displaying 
         st.dataframe(
             st.session_state.housing_data_filtered,
             column_config={
-                "price": st.column_config.ProgressColumn(
-                    "Rental Price",
-                    help="Rental Price",
+                "price_num": st.column_config.ProgressColumn(
+                    "Price",
+                    help="Price",
                     format="$%f",
                     min_value=MinPrice,
                     max_value=MaxPrice,
                     ),
-                "link": st.column_config.ImageColumn(
+                "thumbnail_image": st.column_config.ImageColumn(
                     "House Image", help="Streamlit app preview screenshots"
-                )
+                ),
+ 
         },
         hide_index=True,
+        column_order=["thumbnail_image", "title", "address","sqm_num","price_num","otherinfo","otherinfo_2", "insertionpage"]
         )
 
  
